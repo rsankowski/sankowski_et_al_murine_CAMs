@@ -222,7 +222,7 @@ cp2_genes_all <- cp2_genes_all %>%
 cp2_genes_all <- cp2_genes_all %>%
   filter(avg_log2FC > 0) %>%
   mutate(
-    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .25, "sig.", "not sig."),
+    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .2, "sig.", "not sig."),
     show_genes = ifelse(genes_sig == "sig.", gene, NA),
     avg_log2FC = case_when(
       Condition == "SPF"  ~ -1 * avg_log2FC,
@@ -282,7 +282,7 @@ cp2_genes_all <- cp2_genes_all %>%
 cp2_genes_all <- cp2_genes_all %>%
   filter(avg_log2FC > 0) %>%
   mutate(
-    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .25, "sig.", "not sig."),
+    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .2, "sig.", "not sig."),
     show_genes = ifelse(genes_sig == "sig.", gene, NA),
     avg_log2FC = case_when(
       Condition == "SPF"  ~ -1 * avg_log2FC,

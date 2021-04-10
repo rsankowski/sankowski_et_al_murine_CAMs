@@ -82,17 +82,25 @@ if (!file.exists(file.path("data", "markers_men.RData"))) {
   load(file.path("data", "markers_men.RData"))
 }
 
-top15 <- markers_men %>% 
+top10 <- markers_men %>% 
   #remove non annotated genes
   filter(!gene %in% grep("(^Gm|^Rp|Rik|mt-|RP)", .$gene, value = T)) %>%
   group_by(cluster) %>% 
-  top_n(n = 15, wt = avg_log2FC)
+  top_n(n = 10, wt = avg_log2FC)
 
-heat <- DoHeatmap(men,features = top15$gene, group.colors = colors_many[-14]) 
+heat <- DoHeatmap(men,features = top10$gene, group.colors = colors_pat) 
 heat + 
   scale_fill_viridis(option = "B")
 
 ggsave(file.path("plots", "heatmaps", "men", "men_heatmap.pdf"), useDingbats=F)
+
+
+DoHeatmap(men,features = top10$gene, group.bar = F) +
+  theme_void() + 
+  scale_fill_viridis(option = "B") +
+  NoLegend()
+
+ggsave(file.path("plots", "heatmaps", "men", "heatmap_color_panel.png"))
 
 #fig 4 - bray-curtis dissimilarity
 set.seed(79106)
@@ -135,7 +143,7 @@ all %>%
         text = element_text(size=20)) +
   labs(title = "men Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
 
-ggsave(file.path("plots", "others", "men", "men_epiplexus_bray_curtis_violin_plots.pdf"), useDingbats=F)
+ggsave(file.path("plots", "others", "men", "men_bray_curtis_violin_plots.pdf"), useDingbats=F)
 
 #fig 4 - volcano plot
 men2 <- men
@@ -174,7 +182,7 @@ men2_genes_all <- men2_genes_all %>%
 men2_genes_all <- men2_genes_all %>%
   filter(avg_log2FC > 0) %>%
   mutate(
-    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .25, "sig.", "not sig."),
+    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .2, "sig.", "not sig."),
     show_genes = ifelse(genes_sig == "sig.", gene, NA),
     avg_log2FC = case_when(
       Condition == "SPF"  ~ -1 * avg_log2FC,
@@ -203,7 +211,7 @@ ggsave(file.path("plots", "others", "men", "men_cams_volcano.pdf"), useDingbats=
 
 
 #fig 4 g - gene expression umaps
-genes <- c("Hexb", "Cst3", "P2ry12", "Apoe", "Mki67", "Pmen4l1", "Stab1", "Ttr")
+genes <- c("Mrc1", "Stab1", "P2ry12", "Apoe", "Nr4a1", "Ccr2", "Enpp2", "H2-Aa", "Cd209a", "Hexb", "Fos")
 
 for (i in genes) {
   plt <- plot_expmap_seurat(features=i, object=men,  point_size = 6,.retain_cl = levels(men))

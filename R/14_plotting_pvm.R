@@ -34,7 +34,7 @@ levels(pvm) <- order_clusters[c(8:7,3,6:4,10:9,2,1)]
 metadata <- pvm@meta.data
 metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = order_clusters[c(8:7,3,6:4,10:9,2,1)])
 metadata$cell_type <- case_when(
-  metadata$seurat_clusters %in% c("0", "1", "2", "6", "9")   ~ "CAMs",
+  metadata$seurat_clusters %in% c("0", "2", "6", "9")   ~ "CAMs",
   metadata$seurat_clusters %in% c("5")  ~ "cDC2",
   metadata$seurat_clusters %in% c("7") ~ "Micr",
   metadata$seurat_clusters %in% c("7", "3") ~ "Monocytes",
@@ -82,23 +82,30 @@ if (!file.exists(file.path("data", "markers_pvm.RData"))) {
   load(file.path("data", "markers_pvm.RData"))
 }
 
-top15 <- markers_pvm %>% 
+top10 <- markers_pvm %>% 
   #remove non annotated genes
   filter(!gene %in% grep("(^Gm|^Rp|Rik|mt-|RP)", .$gene, value = T)) %>%
   group_by(cluster) %>% 
-  top_n(n = 15, wt = avg_log2FC)
+  top_n(n = 10, wt = avg_log2FC)
 
-heat <- DoHeatmap(pvm,features = top15$gene, group.colors = colors_many[-14]) 
+heat <- DoHeatmap(pvm,features = top10$gene, group.colors = colors_pat) 
 heat + 
   scale_fill_viridis(option = "B")
 
 ggsave(file.path("plots", "heatmaps", "pvm", "pvm_heatmap.pdf"), useDingbats=F)
 
+DoHeatmap(pvm,features = top10$gene, group.bar = F) +
+  theme_void() + 
+  scale_fill_viridis(option = "B") +
+  NoLegend()
+
+ggsave(file.path("plots", "heatmaps", "pvm", "heatmap_color_panel.png"))
+
 #fig 4 - bray-curtis dissimilarity
 set.seed(79106)
 
 #copare based on variable genes - CAMs
-a_spf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("1", "3", "4"))] %>%
+a_spf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("3", "4"))] %>%
   as.matrix() %>%
   as.data.frame() %>%
   dplyr::select(contains("SPF")) %>%
@@ -109,7 +116,7 @@ a_spf <- a_spf %>%
           na.rm = FALSE) %>%
   as.numeric()
 
-a_gf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("1", "3", "4"))] %>%
+a_gf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("3", "4"))] %>%
   as.matrix() %>%
   as.data.frame() %>%
   dplyr::select(contains("GF")) %>%
@@ -174,7 +181,7 @@ pvm2_genes_all <- pvm2_genes_all %>%
 pvm2_genes_all <- pvm2_genes_all %>%
   filter(avg_log2FC > 0) %>%
   mutate(
-    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .25, "sig.", "not sig."),
+    genes_sig = ifelse(p_val_adj < .05 & avg_log2FC > .2, "sig.", "not sig."),
     show_genes = ifelse(genes_sig == "sig.", gene, NA),
     avg_log2FC = case_when(
       Condition == "SPF"  ~ -1 * avg_log2FC,
@@ -203,7 +210,7 @@ ggsave(file.path("plots", "others", "pvm", "pvm_cams_volcano.pdf"), useDingbats=
 
 
 #fig 4 g - gene expression umaps
-genes <- c("Hexb", "Cst3", "P2ry12", "Apoe", "Mki67", "Ppvm4l1", "Stab1", "Ttr")
+genes <- c("Mrc1", "Stab1", "P2ry12", "Apoe", "Nr4a1", "Ccr2", "Enpp2", "H2-Aa", "Cd209a", "Hexb", "Fos", "Nkg7")
 
 for (i in genes) {
   plt <- plot_expmap_seurat(features=i, object=pvm,  point_size = 6,.retain_cl = levels(pvm))
