@@ -41,6 +41,13 @@ metadata$cell_type <- case_when(
   metadata$seurat_clusters %in% c("8") ~ "Lymphocytes",
   TRUE ~ "other"
 )
+
+
+#export suppl tables
+a <- as.data.frame(table(metadata$seurat_clusters)) 
+colnames(a) <- c("Cluster", "Freq")
+assertthat::assert_that(sum(a$Freq) == nrow(metadata))
+write.csv(a, file.path("data", "Tbl_S13_cluster_cell_count_pvm.csv"))
   
 # fig 4a - cell signature umaps
 signature_genes <-  read_excel(file.path("data","cell_signatures.xlsx"), "Core signature", skip = 2)
@@ -174,6 +181,9 @@ if (!file.exists(file.path("data", "pvm_diffgenes_spf_vs_gf.RData"))) {
 } else {
   load(file.path("data", "pvm_diffgenes_spf_vs_gf.RData"))
 }
+
+write.csv(pvm2_genes_all, file.path("data", "Table_S12_pvm_DEGs.csv"))
+
 #remove unannotated genes
 pvm2_genes_all <- pvm2_genes_all %>%
   filter(!grepl("(Gm|Rp|Rik|mt-|RP)", .$gene))
@@ -210,7 +220,7 @@ ggsave(file.path("plots", "others", "pvm", "pvm_cams_volcano.pdf"), useDingbats=
 
 
 #fig 4 g - gene expression umaps
-genes <- c("Mrc1", "Stab1", "P2ry12", "Apoe", "Nr4a1", "Ccr2", "Enpp2", "H2-Aa", "Cd209a", "Hexb", "Fos", "Nkg7")
+genes <- c("Mrc1", "Stab1", "P2ry12", "Apoe", "Nr4a1", "Ccr2", "Enpp2", "H2-Aa", "Cd209a", "Hexb", "Fos", "Nkg7", "Tmem119", "Olfml3","Sall1")
 
 for (i in genes) {
   plt <- plot_expmap_seurat(features=i, object=pvm,  point_size = 6,.retain_cl = levels(pvm))
@@ -218,3 +228,27 @@ for (i in genes) {
   ggsave(file.path("plots", "umap", "pvm", paste0(i,"_pvm.pdf")), useDingbats=F)
 }  
 
+# violin plots
+genes <- c("Ly86",
+           "Fcrls",
+           "Cd209b")
+
+map(genes, function(x) {
+  a <- data.frame(gene = pvm[["SCT"]]@counts[x,], "ID" = colnames(pvm[["SCT"]]@counts))
+  a <- metadata[,c('Condition', 'seurat_clusters')] %>%
+    rownames_to_column(var="ID") %>%
+    right_join(a) %>%
+    na.omit %>%
+    mutate(Condition = factor(.$Condition, levels = c("SPF", "GF")))
+  
+  plt <- ggplot(a, aes(seurat_clusters, gene, fill = Condition)) +
+    geom_violin(scale="width") +
+    #geom_jitter(pch=21, size = 3, width = 0.1) +
+    labs(title = x) +
+    scale_fill_manual("Status", values = colors_many[2:4]) +
+    theme_minimal() 
+  
+  print(plt)
+  ggsave(file.path('plots','others', 'pvm', paste0('Cluster-violin-plot-pvm-', x,'.pdf')), useDingbats=F)
+})
+ 

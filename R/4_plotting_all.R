@@ -115,3 +115,8 @@ for (i in genes) {
   ggsave(file.path("plots", "umap", "all", paste0(i,"_all.pdf")), useDingbats=F)
 }  
 
+#export suppl tables
+a <- as.data.frame(table(metadata$seurat_clusters)) 
+colnames(a) <- c("Cluster", "Freq")
+assertthat::assert_that(sum(a$Freq) == nrow(metadata))
+write.csv(a, file.path("data", "Tbl_S1_cluster_cell_count.csv"))

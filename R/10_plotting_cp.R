@@ -39,6 +39,12 @@ metadata$cell_type <- case_when(
   TRUE ~ "other"
 )
 
+#export suppl tables
+a <- as.data.frame(table(metadata$seurat_clusters)) 
+colnames(a) <- c("Cluster", "Freq")
+assertthat::assert_that(sum(a$Freq) == nrow(metadata))
+write.csv(a, file.path("data", "Tbl_S9_cluster_cell_count.csv"))
+
 # fig 3a - cell signature umaps
 signature_genes <-  read_excel(file.path("data","cell_signatures.xlsx"), "Core signature", skip = 2)
 
@@ -215,6 +221,9 @@ if (!file.exists(file.path("data", "cp_epi_diffgenes_spf_vs_gf.RData"))) {
 } else {
   load(file.path("data", "cp_epi_diffgenes_spf_vs_gf.RData"))
 }
+
+write.csv(cp2_genes_all, file.path("data", "Table_S12a_cp_epi_DEGs.csv"))
+
 #remove unannotated genes
 cp2_genes_all <- cp2_genes_all %>%
   filter(!grepl("(Gm|Rp|Rik|mt-|RP)", .$gene))
@@ -275,6 +284,9 @@ if (!file.exists(file.path("data", "cp_MF_diffgenes_spf_vs_gf.RData"))) {
 } else {
   load(file.path("data", "cp_MF_diffgenes_spf_vs_gf.RData"))
 }
+
+write.csv(cp2_genes_all, file.path("data", "Table_S12b_cp_MF_DEGs.csv"))
+
 #remove unannotated genes
 cp2_genes_all <- cp2_genes_all %>%
   filter(!grepl("(Gm|Rp|Rik|mt-|RP)", .$gene))
@@ -310,11 +322,35 @@ cp_volcano
 ggsave(file.path("plots", "others", "cp", "cp_MF_volcano.pdf"), useDingbats=F, height = 9.57, width = 6.25)
 
 #fig 3 g - gene expression umaps
-genes <- c("Hexb", "Cst3", "P2ry12", "Apoe", "Mki67", "Pcp4l1", "Stab1", "Ttr", "Mrc1")
+genes <- c("Hexb", "Cst3", "P2ry12", "Apoe", "Mki67", "Pcp4l1", "Stab1", "Ttr", "Mrc1", "Tmem119")
 
 for (i in genes) {
   plt <- plot_expmap_seurat(features=i, object=cp,  point_size = 6,.retain_cl = levels(cp))
   print(plt)
   ggsave(file.path("plots", "umap", "cp", paste0(i,"_cp.pdf")), useDingbats=F)
 }  
+
+# violin plots
+genes <- c("Ly86",
+           "Apoe",
+           "Cd52")
+
+map(genes, function(x) {
+  a <- data.frame(gene = cp[["SCT"]]@counts[x,], "ID" = colnames(cp[["SCT"]]@counts))
+  a <- metadata[,c('Condition', 'seurat_clusters')] %>%
+    rownames_to_column(var="ID") %>%
+    right_join(a) %>%
+    na.omit %>%
+    mutate(Condition = factor(.$Condition, levels = c("SPF", "GF")))
+  
+  plt <- ggplot(a, aes(seurat_clusters, gene, fill = Condition)) +
+    geom_violin(scale="width") +
+    #geom_jitter(pch=21, size = 3, width = 0.1) +
+    labs(title = x) +
+    scale_fill_manual("Status", values = colors_many[2:4]) +
+    theme_minimal() 
+  
+  print(plt)
+  ggsave(file.path('plots','others', 'cp', paste0('Cluster-violin-plot-cp-', x,'.pdf')), useDingbats=F)
+})
 

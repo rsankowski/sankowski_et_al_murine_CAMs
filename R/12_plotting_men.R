@@ -41,7 +41,14 @@ metadata$cell_type <- case_when(
   metadata$seurat_clusters %in% c("5", "6") ~ "CNS_cells",
   TRUE ~ "other"
 )
-  
+
+
+#export suppl tables
+a <- as.data.frame(table(metadata$seurat_clusters)) 
+colnames(a) <- c("Cluster", "Freq")
+assertthat::assert_that(sum(a$Freq) == nrow(metadata))
+write.csv(a, file.path("data", "Tbl_S17_cluster_cell_count.csv"))
+
 # fig 4a - cell signature umaps
 signature_genes <-  read_excel(file.path("data","cell_signatures.xlsx"), "Core signature", skip = 2)
 

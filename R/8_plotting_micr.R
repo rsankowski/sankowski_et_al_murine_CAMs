@@ -34,6 +34,12 @@ levels(micr) <- order_clusters
 metadata <- micr@meta.data
 metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = levels(micr))
 
+#export suppl tables
+a <- as.data.frame(table(metadata$seurat_clusters)) 
+colnames(a) <- c("Cluster", "Freq")
+assertthat::assert_that(sum(a$Freq) == nrow(metadata))
+write.csv(a, file.path("data", "Tbl_S5_cluster_cell_count.csv"))
+
 # fig 2a - cell signature umaps
 signature_genes <-  read_excel(file.path("data","cell_signatures.xlsx"), "Core signature", skip = 2)
 
@@ -149,6 +155,8 @@ if (!file.exists(file.path("data", "micr_diffgenes_spf_vs_gf.RData"))) {
   load(file.path("data", "micr_diffgenes_spf_vs_gf.RData"))
 }
 
+#export suppl table 8
+write.csv(micr2_genes, file.path("data", "Table_S8_micr.csv"))
 #remove unannotated genes
 micr2_genes <- micr2_genes %>%
   filter(!grepl("(Gm|Rp|Rik|mt-|RP)", .$gene))
@@ -191,4 +199,33 @@ for (i in genes) {
   print(plt)
   ggsave(file.path("plots", "umap", "micr", paste0(i,"_micr.pdf")), useDingbats=F)
 }  
+
+# plot violin plots
+genes <- c("Ddit4", 
+           "C1qb",
+           "Rnase4",
+           "Apoe",
+           "Cd180",
+           "Ly86",
+           "P2ry12",
+           "Fcgr2b")
+
+map(genes, function(x) {
+a <- data.frame(gene = micr[["SCT"]]@counts[x,], "ID" = colnames(micr[["SCT"]]@counts))
+a <- metadata[,c('Condition', 'seurat_clusters')] %>%
+  rownames_to_column(var="ID") %>%
+  right_join(a) %>%
+  na.omit %>%
+  mutate(Condition = factor(.$Condition, levels = c("SPF", "GF")))
+
+plt <- ggplot(a, aes(seurat_clusters, gene, fill = Condition)) +
+  geom_violin(scale="width") +
+  #geom_jitter(pch=21, size = 3, width = 0.1) +
+  labs(title = x) +
+  scale_fill_manual("Status", values = colors_many[2:4]) +
+  theme_minimal() 
+
+print(plt)
+ggsave(file.path('plots','others', 'micr', paste0('Cluster-violin-plot-micr-', x,'.pdf')), useDingbats=F)
+})
 
