@@ -18,7 +18,7 @@ men <- subset(all_singl, cells=grep("Men", colnames(all_singl)))
 men <- SCTransform(men, vars.to.regress = "percent.mt", verbose = FALSE)
 
 #pca etc
-men <- RunPCA(men, verbose = FALSE)
+men <- RunPCA(men, verbose = FALSE, umap.method = 'umap-learn', metric = 'correlation')
 
 #run elbow plot to find most relevant PCs
 ElbowPlot(men)

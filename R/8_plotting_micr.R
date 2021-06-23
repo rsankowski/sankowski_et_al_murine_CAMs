@@ -34,6 +34,10 @@ levels(micr) <- order_clusters
 metadata <- micr@meta.data
 metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = levels(micr))
 
+#export metadata
+write.csv(metadata, file.path("data", "micr_cell_metadata.csv"))
+tools::md5sum(file.path("data", "micr_cell_metadata.csv"))
+
 #export suppl tables
 a <- as.data.frame(table(metadata$seurat_clusters)) 
 colnames(a) <- c("Cluster", "Freq")
@@ -96,49 +100,6 @@ DoHeatmap(micr,features = top10$gene, group.bar = F) +
   NoLegend()
 
 ggsave(file.path("plots", "heatmaps", "micr", "clusters_micr_heatmap_color_panel.png"))
-
-#fig 2 - bray-curtis dissimilarity
-set.seed(79106)
-
-#copare based on variable genes
-a_spf <- micr[["SCT"]]@counts[VariableFeatures(micr),] %>%
-  as.matrix() %>%
-  as.data.frame() %>%
-  dplyr::select(contains("SPF")) %>%
-  t() 
-
-a_spf <- a_spf %>%
-  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
-          na.rm = FALSE) %>%
-  as.numeric()
-
-a_gf <- micr[["SCT"]]@counts[VariableFeatures(micr),] %>%
-  as.matrix() %>%
-  as.data.frame() %>%
-  dplyr::select(contains("GF")) %>%
-  t() 
-
-a_gf <- a_gf %>%
-  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
-          na.rm = FALSE) %>%
-  as.numeric()
-
-all <- bind_rows(data.frame(condition="GF", dist=a_gf),
-                 data.frame(condition="SPF", dist=a_spf))
-all$condition <- factor(all$condition, levels = c("SPF", "GF"))
-
-all %>%
-  ggplot(aes(condition, dist, fill=condition)) +
-  geom_violin(draw_quantiles = 0.5) +
-  scale_fill_manual(values = colors_many[2:4]) +
-  stat_compare_means() +
-  theme_linedraw() +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor = element_blank(),
-        text = element_text(size=20)) +
-  labs(title = "MG Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
-
-ggsave(file.path("plots", "others", "micr", "micr_bray_curtis_violin_plots.pdf"), useDingbats=F)
 
 #fig 2 - volcano plot
 
@@ -229,3 +190,46 @@ print(plt)
 ggsave(file.path('plots','others', 'micr', paste0('Cluster-violin-plot-micr-', x,'.pdf')), useDingbats=F)
 })
 
+#other analyses
+#fig 2 - bray-curtis dissimilarity
+set.seed(79106)
+
+#compare based on variable genes
+a_spf <- micr[["SCT"]]@counts[VariableFeatures(micr),] %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  dplyr::select(contains("SPF")) %>%
+  t() 
+
+a_spf <- a_spf %>%
+  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
+          na.rm = FALSE) %>%
+  as.numeric()
+
+a_gf <- micr[["SCT"]]@counts[VariableFeatures(micr),] %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  dplyr::select(contains("GF")) %>%
+  t() 
+
+a_gf <- a_gf %>%
+  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
+          na.rm = FALSE) %>%
+  as.numeric()
+
+all <- bind_rows(data.frame(condition="GF", dist=a_gf),
+                 data.frame(condition="SPF", dist=a_spf))
+all$condition <- factor(all$condition, levels = c("SPF", "GF"))
+
+all %>%
+  ggplot(aes(condition, dist, fill=condition)) +
+  geom_violin(draw_quantiles = 0.5) +
+  scale_fill_manual(values = colors_many[2:4]) +
+  stat_compare_means() +
+  theme_linedraw() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        text = element_text(size=20)) +
+  labs(title = "MG Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
+
+ggsave(file.path("plots", "others", "micr", "micr_bray_curtis_violin_plots.pdf"), useDingbats=F)

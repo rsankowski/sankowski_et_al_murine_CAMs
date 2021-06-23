@@ -42,6 +42,9 @@ metadata$cell_type <- case_when(
   TRUE ~ "other"
 )
 
+#export metadata
+write.csv(metadata, file.path("data", "pvm_cell_metadata.csv"))
+tools::md5sum(file.path("data", "pvm_cell_metadata.csv"))
 
 #export suppl tables
 a <- as.data.frame(table(metadata$seurat_clusters)) 
@@ -108,50 +111,8 @@ DoHeatmap(pvm,features = top10$gene, group.bar = F) +
 
 ggsave(file.path("plots", "heatmaps", "pvm", "heatmap_color_panel.png"))
 
-#fig 4 - bray-curtis dissimilarity
-set.seed(79106)
 
-#copare based on variable genes - CAMs
-a_spf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("3", "4"))] %>%
-  as.matrix() %>%
-  as.data.frame() %>%
-  dplyr::select(contains("SPF")) %>%
-  t() 
-
-a_spf <- a_spf %>%
-  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
-          na.rm = FALSE) %>%
-  as.numeric()
-
-a_gf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("3", "4"))] %>%
-  as.matrix() %>%
-  as.data.frame() %>%
-  dplyr::select(contains("GF")) %>%
-  t() 
-
-a_gf <- a_gf %>%
-  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
-          na.rm = FALSE) %>%
-  as.numeric()
-
-all <- bind_rows(data.frame(condition="GF", dist=a_gf),
-                 data.frame(condition="SPF", dist=a_spf))
-all$condition <- factor(all$condition, levels = c("SPF", "GF"))
-
-all %>%
-  ggplot(aes(condition, dist, fill=condition)) +
-  geom_violin(draw_quantiles = 0.5) +
-  scale_fill_manual(values = colors_many[2:4]) +
-  stat_compare_means() +
-  theme_linedraw() +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor = element_blank(),
-        text = element_text(size=20)) +
-  labs(title = "pvm Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
-
-ggsave(file.path("plots", "others", "pvm", "pvm_epiplexus_bray_curtis_violin_plots.pdf"), useDingbats=F)
-
-#fig 4 - volcano plot
+#volcano plot
 pvm2 <- pvm
 
 Idents(pvm2) <- paste(metadata$Condition, metadata$cell_type, sep = "_")
@@ -251,4 +212,49 @@ map(genes, function(x) {
   print(plt)
   ggsave(file.path('plots','others', 'pvm', paste0('Cluster-violin-plot-pvm-', x,'.pdf')), useDingbats=F)
 })
+
+#other analyses
+#bray-curtis dissimilarity
+set.seed(79106)
+
+#compare based on variable genes - CAMs
+a_spf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("3", "4"))] %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  dplyr::select(contains("SPF")) %>%
+  t() 
+
+a_spf <- a_spf %>%
+  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
+          na.rm = FALSE) %>%
+  as.numeric()
+
+a_gf <- pvm[["SCT"]]@counts[VariableFeatures(pvm), which(metadata$seurat_clusters %in% c("3", "4"))] %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  dplyr::select(contains("GF")) %>%
+  t() 
+
+a_gf <- a_gf %>%
+  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
+          na.rm = FALSE) %>%
+  as.numeric()
+
+all <- bind_rows(data.frame(condition="GF", dist=a_gf),
+                 data.frame(condition="SPF", dist=a_spf))
+all$condition <- factor(all$condition, levels = c("SPF", "GF"))
+
+all %>%
+  ggplot(aes(condition, dist, fill=condition)) +
+  geom_violin(draw_quantiles = 0.5) +
+  scale_fill_manual(values = colors_many[2:4]) +
+  stat_compare_means() +
+  theme_linedraw() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        text = element_text(size=20)) +
+  labs(title = "pvm Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
+
+ggsave(file.path("plots", "others", "pvm", "pvm_epiplexus_bray_curtis_violin_plots.pdf"), useDingbats=F)
+
  

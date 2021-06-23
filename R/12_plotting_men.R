@@ -28,20 +28,20 @@ rownames(order_clusters) <- order_clusters$seurat_clusters
 order_clusters <- order_clusters$seurat_clusters[hclust(dist(order_clusters[,-1]))$order]
 
 #reorder the clusters
-levels(men) <- order_clusters[c(8:6,1,3,4:5,2)]
+levels(men) <- order_clusters #[c(8:6,1,3,4:5,2)]
 
 #extract metadata
 metadata <- men@meta.data
-metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = order_clusters[c(8:6,1,3,4:5,2)])
+metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = order_clusters) #[c(8:6,1,3,4:5,2)]
 metadata$cell_type <- case_when(
-  metadata$seurat_clusters %in% c("1", "3", "4")  & colSums(as.matrix(men[["SCT"]]@counts[c("Cd209a", "Tnfsf9", "Tnip3", "Kcne3"),])) < 2 ~ "CAMs",
-  metadata$seurat_clusters %in% c("4") & colSums(as.matrix(men[["SCT"]]@counts[c("Cd209a", "Tnfsf9", "Tnip3", "Kcne3"),])) > 2  ~ "cDC2",
-  metadata$seurat_clusters %in% c("0", "2") ~ "Micr",
-  metadata$seurat_clusters %in% c("7") ~ "Monocytes",
-  metadata$seurat_clusters %in% c("5", "6") ~ "CNS_cells",
+  metadata$seurat_clusters %in% c("0", "2")  ~ "CAMs",
+  metadata$seurat_clusters %in% c("5") & colSums(as.matrix(men[["SCT"]]@counts[c("Cd209a", "Tnfsf9", "Tnip3", "Kcne3"),])) > 2  ~ "cDC2",
+  metadata$seurat_clusters %in% c("1", "3", "4") ~ "Micr",
+  metadata$seurat_clusters %in% c("5") ~ "Monocytes",
   TRUE ~ "other"
 )
-
+write.csv(metadata, file.path("data", "men_cell_metadata.csv"))
+tools::md5sum(file.path("data", "men_cell_metadata.csv"))
 
 #export suppl tables
 a <- as.data.frame(table(metadata$seurat_clusters)) 
@@ -49,7 +49,7 @@ colnames(a) <- c("Cluster", "Freq")
 assertthat::assert_that(sum(a$Freq) == nrow(metadata))
 write.csv(a, file.path("data", "Tbl_S17_cluster_cell_count.csv"))
 
-# fig 4a - cell signature umaps
+# fig 5a - cell signature umaps
 signature_genes <-  read_excel(file.path("data","cell_signatures.xlsx"), "Core signature", skip = 2)
 
 for (i in colnames(signature_genes)) {
@@ -58,21 +58,21 @@ for (i in colnames(signature_genes)) {
   ggsave(file.path("plots", "umap", "men", paste0(i,"_signature_men.pdf")), useDingbats=F)
 }
 
-# fig 4b - conditions umap
+# fig 5b - conditions umap
 men %>%
   DimPlot(group.by = "Condition", pt.size = 6) +
   theme_void() +
   scale_color_manual(values=colors_many[3:2])
 ggsave(file.path("plots", "umap", "men", "conditions_men_umap.pdf"), useDingbats=F)
 
-# fig 4c - clusters umap
+# fig 5c - clusters umap
 men %>%
   DimPlot(label=T, pt.size = 6) +
   theme_void() +
   scale_color_manual(values=colors_pat)
 ggsave(file.path("plots", "umap", "men", "clusters_men_umap.pdf"), useDingbats=F)
 
-#fig 4d - barplot
+#fig 5d - barplot
 mosaicGG2(metadata, "seurat_clusters", "Condition", colors = colors_many[3:2]) 
 
 ggsave(file.path("plots", "others", "men", "marimekko_men.pdf"), useDingbats=F)
@@ -80,7 +80,7 @@ ggsave(file.path("plots", "others", "men", "marimekko_men.pdf"), useDingbats=F)
 hyper_test_n(metadata, "seurat_clusters", "Condition") %>%
   write_csv(file.path("data", "marimekko_clusters_condition_men_cells.csv"))
 
-#fig 4e - gene heatmap
+#fig 5e - gene heatmap
 if (!file.exists(file.path("data", "markers_men.RData"))) {
   markers_men <- FindAllMarkers(men)          
   save(markers_men, file = file.path("data", "markers_men.RData"))
@@ -109,50 +109,7 @@ DoHeatmap(men,features = top10$gene, group.bar = F) +
 
 ggsave(file.path("plots", "heatmaps", "men", "heatmap_color_panel.png"))
 
-#fig 4 - bray-curtis dissimilarity
-set.seed(79106)
-
-#copare based on variable genes - CAMs
-a_spf <- men[["SCT"]]@counts[VariableFeatures(men), which(metadata$seurat_clusters %in% c("1", "3", "4"))] %>%
-  as.matrix() %>%
-  as.data.frame() %>%
-  dplyr::select(contains("SPF")) %>%
-  t() 
-
-a_spf <- a_spf %>%
-  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
-          na.rm = FALSE) %>%
-  as.numeric()
-
-a_gf <- men[["SCT"]]@counts[VariableFeatures(men), which(metadata$seurat_clusters %in% c("1", "3", "4"))] %>%
-  as.matrix() %>%
-  as.data.frame() %>%
-  dplyr::select(contains("GF")) %>%
-  t() 
-
-a_gf <- a_gf %>%
-  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
-          na.rm = FALSE) %>%
-  as.numeric()
-
-all <- bind_rows(data.frame(condition="GF", dist=a_gf),
-                 data.frame(condition="SPF", dist=a_spf))
-all$condition <- factor(all$condition, levels = c("SPF", "GF"))
-
-all %>%
-  ggplot(aes(condition, dist, fill=condition)) +
-  geom_violin(draw_quantiles = 0.5) +
-  scale_fill_manual(values = colors_many[2:4]) +
-  stat_compare_means() +
-  theme_linedraw() +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor = element_blank(),
-        text = element_text(size=20)) +
-  labs(title = "men Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
-
-ggsave(file.path("plots", "others", "men", "men_bray_curtis_violin_plots.pdf"), useDingbats=F)
-
-#fig 4 - volcano plot
+#volcano plot
 men2 <- men
 
 Idents(men2) <- paste(metadata$Condition, metadata$cell_type, sep = "_")
@@ -217,7 +174,7 @@ men_volcano
 ggsave(file.path("plots", "others", "men", "men_cams_volcano.pdf"), useDingbats=F)
 
 
-#fig 4 g - gene expression umaps
+#fig 5 g - gene expression umaps
 genes <- c("Mrc1", "Stab1", "P2ry12", "Apoe", "Nr4a1", "Ccr2", "Enpp2", "H2-Aa", "Cd209a", "Hexb", "Fos")
 
 for (i in genes) {
@@ -225,4 +182,50 @@ for (i in genes) {
   print(plt)
   ggsave(file.path("plots", "umap", "men", paste0(i,"_men.pdf")), useDingbats=F)
 }  
+
+
+#other analyses
+
+#bray-curtis dissimilarity
+set.seed(79106)
+
+#copare based on variable genes - CAMs
+a_spf <- men[["SCT"]]@counts[VariableFeatures(men), which(metadata$seurat_clusters %in% c("1", "3", "4"))] %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  dplyr::select(contains("SPF")) %>%
+  t() 
+
+a_spf <- a_spf %>%
+  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
+          na.rm = FALSE) %>%
+  as.numeric()
+
+a_gf <- men[["SCT"]]@counts[VariableFeatures(men), which(metadata$seurat_clusters %in% c("1", "3", "4"))] %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  dplyr::select(contains("GF")) %>%
+  t() 
+
+a_gf <- a_gf %>%
+  vegdist(method="bray", binary=FALSE, diag=FALSE, upper=FALSE,
+          na.rm = FALSE) %>%
+  as.numeric()
+
+all <- bind_rows(data.frame(condition="GF", dist=a_gf),
+                 data.frame(condition="SPF", dist=a_spf))
+all$condition <- factor(all$condition, levels = c("SPF", "GF"))
+
+all %>%
+  ggplot(aes(condition, dist, fill=condition)) +
+  geom_violin(draw_quantiles = 0.5) +
+  scale_fill_manual(values = colors_many[2:4]) +
+  stat_compare_means() +
+  theme_linedraw() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(),
+        text = element_text(size=20)) +
+  labs(title = "men Bray-Curtis Dissimilarity", y="Bray-Curtis Dissimilarity Coefficient")
+
+ggsave(file.path("plots", "others", "men", "men_bray_curtis_violin_plots.pdf"), useDingbats=F)
 

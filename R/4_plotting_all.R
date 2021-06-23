@@ -31,6 +31,10 @@ levels(all_singl) <- order_clusters[c(10:8,15, 7, 13:14, 16:17, 12, 11, 3:6, 1:2
 metadata <- all_singl@meta.data
 metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = levels(all_singl))
 
+#export metadata
+write.csv(metadata, file.path("data", "all_cell_metadata.csv"))
+tools::md5sum(file.path("data", "all_cell_metadata.csv"))
+
 # fig 1a - conditions umap
 all_singl %>%
 DimPlot(group.by = "Condition", pt.size = 3) +
