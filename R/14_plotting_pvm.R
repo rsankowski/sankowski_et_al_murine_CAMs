@@ -117,7 +117,7 @@ pvm2 <- pvm
 
 Idents(pvm2) <- paste(metadata$Condition, metadata$cell_type, sep = "_")
 
-#epiplexus
+#calculate differentially expressed genes
 if (!file.exists(file.path("data", "pvm_diffgenes_spf_vs_gf.RData"))) {
   pvm2_genes_gf <- FindMarkers(pvm2, 
                            ident.1 = "GF_CAMs",

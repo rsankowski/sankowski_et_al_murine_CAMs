@@ -114,7 +114,7 @@ men2 <- men
 
 Idents(men2) <- paste(metadata$Condition, metadata$cell_type, sep = "_")
 
-#epiplexus
+#calculate differentially expressed genes
 if (!file.exists(file.path("data", "men_diffgenes_spf_vs_gf.RData"))) {
   men2_genes_gf <- FindMarkers(men2, 
                            ident.1 = "GF_CAMs",
