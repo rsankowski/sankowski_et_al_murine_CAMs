@@ -26,14 +26,17 @@ ElbowPlot(men)
 #run UMAP and clustering on chosen PCs
 men <- RunUMAP(men, dims = 1:15, verbose = FALSE)
 men <- FindNeighbors(men, dims = 1:15, verbose = FALSE)
-men <- FindClusters(men, resolution = seq(from=0.2,to=2,by=0.2))
+men <- FindClusters(men, resolution = seq(from=0.2,to=5,by=0.2))
 
 #run clustree to find a cluster resolution
 #url https://cran.r-project.org/web/packages/clustree/vignettes/clustree.html#seurat-objects
 clustree(men)
 
+ggsave(file.path("plots", "others", "men", "clustree_output.pdf"), width = 15, height = 15)
+ggsave(file.path("plots", "others", "men", "clustree_output.png"), width = 15, height = 15)
+
 #re cluster based on clustree output
-men <- FindClusters(men, resolution = 1.2)
+men <- FindClusters(men, resolution = 2)
 
 #plot clusters
 DimPlot(men, label = TRUE) + NoLegend()

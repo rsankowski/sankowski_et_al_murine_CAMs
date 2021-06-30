@@ -2,6 +2,8 @@ library(Seurat)
 library(tidyverse)
 library(readxl)
 library(viridis)
+library(biomaRt)
+library(ggpubr)
 
 #create plotting subfolders
 dir.create(file.path("plots", "umap", "all"))
@@ -124,3 +126,86 @@ a <- as.data.frame(table(metadata$seurat_clusters))
 colnames(a) <- c("Cluster", "Freq")
 assertthat::assert_that(sum(a$Freq) == nrow(metadata))
 write.csv(a, file.path("data", "Tbl_S1_cluster_cell_count.csv"))
+
+lst <- list()
+#plot the correlations of Apoe with cell activation signatures
+fls <- list.files(file.path("data", "genesets"))
+act_genes <- map(fls, function(x) {
+  lst[[x]] <- read_table(file.path("data", "genesets", x), skip = 2, col_names = F)
+})
+
+names(act_genes) <- fls
+act_genes <- lapply(act_genes, as.data.frame) 
+
+#find murine orthologues
+ensembl <- useMart("ensembl")
+ensembl.human <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+ensembl.mouse <- useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+
+#save into new list
+act_genes2 <- list()
+act_genes2 <- map(2:length(act_genes), function(x) {
+  orthologs <- getLDS(attributes = c("mgi_symbol"),
+                      filters = "mgi_symbol", values = act_genes[[x]][[1]], mart = ensembl.mouse,
+                      attributesL = c("hgnc_symbol") , martL = ensembl.human)
+  act_genes2[x] <- data.frame(X1=orthologs$MGI.symbol)
+})
+
+#append the dam signature
+dam <- data.frame(X1=act_genes[[1]])
+act_genes2 <- c(list(dam), act_genes2)
+
+lst_micr <- list()
+lst_micr <- map(1:4, function(x) {
+  lst_micr[[x]] <- data.frame(cum_expr=colSums(all_singl[["SCT"]]@counts[act_genes2[[x]][[1]][act_genes2[[x]][[1]] != "Apoe" & act_genes2[[x]][[1]] %in% rownames(all_singl[["SCT"]]@counts)], all_singl@active.ident %in% c("0", "5", "10", "2")]),
+                              Apoe_expr= c(all_singl[["SCT"]]@counts["Apoe", all_singl@active.ident %in% c("0", "5", "10", "2")])) 
+  
+})
+names(lst_micr) <- c("DAM Signature", "GENESET GO IMMUNE RESPONSE", "GENESET GO IMMUNE SYSTEM PROC.", "GENESET CTRL vs IFNG Micr")
+
+
+lst_micr <- lst_micr %>% 
+  bind_rows(.id="Geneset")
+
+broom::glance(lm(cum_expr ~ Apoe_expr + Geneset, data=lst_micr))
+
+lst_micr %>% 
+  ggplot(aes(Apoe_expr, cum_expr)) +
+  geom_point(size=2.5) +
+  geom_smooth(method="lm", se=F, size=2) +
+  theme_pubclean() +
+  facet_wrap(~ Geneset) +
+  stat_cor(size=5) +
+  theme(text = element_text(size=18))
+
+ggsave(file.path("plots", "others", "all", "Apoe_geneset_correlation_micr.pdf"), useDingbats=F)
+ggsave(file.path("plots", "others", "all", "Apoe_geneset_correlation_micr.png"))
+
+#same for cams
+lst_cams <- list()
+lst_cams <- map(1:4, function(x) {
+  lst_cams[[x]] <- data.frame(cum_expr=colSums(all_singl[["SCT"]]@counts[act_genes2[[x]][[1]][act_genes2[[x]][[1]] != "Apoe" & act_genes2[[x]][[1]] %in% rownames(all_singl[["SCT"]]@counts)], all_singl@active.ident %in% c("7", "1", "13", "4")]),
+                              Apoe_expr=c(all_singl[["SCT"]]@counts["Apoe", all_singl@active.ident %in% c("7", "1", "13", "4")])) 
+  
+})
+
+names(lst_cams) <- c("DAM Signature", "GENESET GO IMMUNE RESPONSE", "GENESET GO IMMUNE SYSTEM PROC.", "GENESET CTRL vs IFNG micr")
+
+
+lst_cams <- lst_cams %>% 
+  bind_rows(.id="Geneset")
+
+broom::glance(lm(cum_expr ~ Apoe_expr + Geneset, data=lst_cams))
+
+lst_cams %>% 
+  ggplot(aes(Apoe_expr, cum_expr)) +
+  geom_point(size=2.5) +
+  geom_smooth(method="lm", se=F, size=2) +
+  theme_pubclean() +
+  facet_wrap(~ Geneset) +
+  stat_cor(size=5) +
+  theme(text = element_text(size=18))
+
+ggsave(file.path("plots", "others", "all", "Apoe_geneset_correlation_cams.pdf"), useDingbats=F)
+ggsave(file.path("plots", "others", "all", "Apoe_geneset_correlation_cams.png"))
+

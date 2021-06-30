@@ -61,6 +61,22 @@ colnames(enrich_up)[10] <- 'GeneCount'
 
 enrich_up$p.adjust <- as.numeric(enrich_up$p.adjust)
 
+enrich_up <- enrich_up %>% 
+  mutate(Celltype = factor(
+    case_when(
+      Cluster %in% c("7", "9", "1", "13", "4", "3", "6") ~ "CAMs",
+      Cluster %in% c("0", "5", "10", "2") ~ "MG",
+      Cluster == "8" ~ "Ly6clo",
+      Cluster == "11" ~ "Ly6chi",
+      Cluster == "12" ~ "DCs",
+      Cluster == "16" ~ "Lymphocytes",
+      Cluster == "15" ~ "Stromal",
+      Cluster == "14" ~ "Prolif."
+), levels = c("CAMs", "MG", "Ly6clo", "Ly6chi", "DCs", "Lymphocytes", "Stromal", "Prolif.")
+)
+)
+assert_that(sum(is.na(enrich_up$Celltype))==0)
+
 dot_plot <- ggplot(enrich_up, aes(Cluster, Description, size = GeneCount, fill= -log2(p.adjust))) + #[enrich_up$GeneCount>4,]
   geom_point(pch=21, stroke=0.25) +
   scale_fill_viridis('-log2 transf. \nadj. p-value)') +
@@ -70,3 +86,16 @@ dot_plot <- ggplot(enrich_up, aes(Cluster, Description, size = GeneCount, fill= 
 dot_plot
 
 ggsave(file.path("plots", "others", "all", 'top40-PC_all_GoTerm_dot_plot_new.pdf'), height = 7.5, width = 7, units = 'in', useDingbats=F)
+
+dot_plot <- ggplot(enrich_up, aes(Cluster, Description, size = GeneCount, fill= -log2(p.adjust))) + #[enrich_up$GeneCount>4,]
+  geom_point(pch=21, stroke=0.25) +
+  scale_fill_viridis('-log2 transf. \nadj. p-value)') +
+  theme_light() +
+  theme(text=element_text(size=10),
+        axis.title.y=element_blank()) +
+  facet_grid(. ~ Celltype,
+             space = "free",
+             scales = "free")
+dot_plot
+
+ggsave(file.path("plots", "others", "all", 'top40-PC_all_GoTerm_dot_plot_faceted.pdf'), height = 10, width = 10, units = 'in', useDingbats=F)

@@ -28,16 +28,17 @@ rownames(order_clusters) <- order_clusters$seurat_clusters
 order_clusters <- order_clusters$seurat_clusters[hclust(dist(order_clusters[,-1]))$order]
 
 #reorder the clusters
-levels(men) <- order_clusters #[c(8:6,1,3,4:5,2)]
+levels(men) <- order_clusters[c(10:9,2,4:6,3,7,8,1)]
 
 #extract metadata
 metadata <- men@meta.data
-metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = order_clusters) #[c(8:6,1,3,4:5,2)]
+metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = order_clusters[c(10:9,2,7:3,8,1)])
 metadata$cell_type <- case_when(
-  metadata$seurat_clusters %in% c("0", "2")  ~ "CAMs",
-  metadata$seurat_clusters %in% c("5") & colSums(as.matrix(men[["SCT"]]@counts[c("Cd209a", "Tnfsf9", "Tnip3", "Kcne3"),])) > 2  ~ "cDC2",
-  metadata$seurat_clusters %in% c("1", "3", "4") ~ "Micr",
-  metadata$seurat_clusters %in% c("5") ~ "Monocytes",
+  metadata$seurat_clusters %in% c("0", "2", "7")  ~ "CAMs",
+  metadata$seurat_clusters %in% c("4") & colSums(as.matrix(men[["SCT"]]@counts[c("Cd209a", "Tnfsf9", "Tnip3", "Kcne3"),])) > 2  ~ "cDC2",
+  metadata$seurat_clusters %in% c("1", "3", "5", "6", "8") ~ "Micr",
+  metadata$seurat_clusters %in% c("4") ~ "Ly6chi Monocytes",
+  metadata$seurat_clusters %in% c("4") ~ "Ly6clo Monocytes",
   TRUE ~ "other"
 )
 write.csv(metadata, file.path("data", "men_cell_metadata.csv"))
@@ -172,7 +173,6 @@ men_volcano <- ggplot(men2_genes_all, aes(x=avg_log2FC, y= -log10(p_val_adj), la
 men_volcano 
 
 ggsave(file.path("plots", "others", "men", "men_cams_volcano.pdf"), useDingbats=F)
-
 
 #fig 5 g - gene expression umaps
 genes <- c("Mrc1", "Stab1", "P2ry12", "Apoe", "Nr4a1", "Ccr2", "Enpp2", "H2-Aa", "Cd209a", "Hexb", "Fos")

@@ -169,7 +169,8 @@ genes <- c("Ddit4",
            "Cd180",
            "Ly86",
            "P2ry12",
-           "Fcgr2b")
+           "Fcgr2b",
+           "Hexb")
 
 map(genes, function(x) {
 a <- data.frame(gene = micr[["SCT"]]@counts[x,], "ID" = colnames(micr[["SCT"]]@counts))
